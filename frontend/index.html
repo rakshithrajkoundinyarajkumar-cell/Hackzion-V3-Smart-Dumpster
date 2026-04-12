@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoTrack — Smart Dumpster Monitoring Dashboard</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Header -->
+        <header class="dashboard-header">
+            <div class="header-content">
+                <i class="fa-solid fa-trash-can header-icon"></i>
+                <div>
+                    <h1>Smart Dumpster Monitoring Dashboard</h1>
+                    <p>Real-Time Waste Level Monitoring using ESP32</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="geo-btn" class="geo-btn" onclick="findNearestBin()">
+                    <i class="fa-solid fa-location-crosshairs"></i> Nearest Bin
+                </button>
+                <button id="complaint-btn" class="complaint-btn">
+                    <i class="fa-solid fa-flag"></i> Report Issue
+                </button>
+                <div class="connection-status">
+                    <span class="status-dot" id="connection-dot"></span>
+                    <span id="connection-text">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Nearest Bin Info Bar -->
+        <div id="nearest-bin-bar" class="nearest-bin-bar hidden">
+            <div class="nearest-bin-info">
+                <i class="fa-solid fa-location-dot"></i>
+                <span>Nearest bin: <strong id="nearest-bin-id">—</strong> (<span id="nearest-bin-dist">—</span> km away)</span>
+            </div>
+            <button class="nearest-bin-close" onclick="dismissNearestBar()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="tab-btn active" id="tab-dashboard" onclick="switchTab('dashboard')">
+                <i class="fa-solid fa-gauge-high"></i> Dashboard
+            </button>
+            <button class="tab-btn" id="tab-community" onclick="switchTab('community')">
+                <i class="fa-solid fa-users"></i> Community
+                <span id="complaint-count-badge" class="count-badge hidden"></span>
+            </button>
+        </div>
+
+        <!-- Bin Selector Panel -->
+        <div id="bin-selector-panel" class="bin-selector-panel">
+            <!-- Bin cards injected here -->
+        </div>
+
+        <!-- Dashboard View -->
+        <main class="dashboard-main" id="view-dashboard">
+            
+            <!-- Alert Section -->
+            <div id="alert-banner" class="alert-banner hidden">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span><strong>ALERT:</strong> Dumpster is reaching maximum capacity!</span>
+            </div>
+
+            <!-- Metrics -->
+            <div class="metrics-grid">
+
+                <!-- Garbage Level -->
+                <div class="card metric-card">
+                    <div class="card-icon bg-blue-light">
+                        <i class="fa-solid fa-ruler-vertical text-blue"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Garbage Level</h3>
+                        <div class="value-unit">
+                            <span id="garbage-level" class="metric-value">--</span>
+                            <span class="unit">cm</span>
+                        </div>
+                        <span class="sub-text">Distance to waste</span>
+                    </div>
+                </div>
+
+                <!-- Fill Percentage -->
+                <div class="card metric-card">
+                    <div class="card-icon bg-purple-light">
+                        <i class="fa-solid fa-chart-pie text-purple"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Fullness</h3>
+                        <div class="value-unit">
+                            <span id="fill-percentage" class="metric-value">--</span>
+                            <span class="unit">%</span>
+                        </div>
+                        <span class="sub-text">Capacity used</span>
+                        <span id="predicted-fill-text" class="sub-text" style="color: #e67e22; font-weight: bold; margin-top: 6px;">Predicted (5m): --%</span>
+                    </div>
+                </div>
+
+                <!-- Bin Status -->
+                <div class="card metric-card" id="status-card">
+                    <div class="card-icon bg-green-light" id="status-icon-bg">
+                        <i class="fa-solid fa-check text-green" id="status-icon"></i>
+                    </div>
+                    <div class="card-info">
+                        <h3>Bin Status</h3>
+                        <div class="value-unit">
+                            <span id="bin-status" class="status-value">--</span>
+                        </div>
+                        <span class="sub-text">Current state</span>
+                        <span id="nearest-neighbor-text" class="sub-text" style="color: #34495e; font-weight: bold; margin-top: 4px; display: block;">Nearest: --</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Visualization -->
+            <div class="viz-grid">
+                <div class="card viz-card">
+                    <h2>Live Capacity</h2>
+                    <div class="gauge-container">
+                        <div class="circular-progress">
+                            <div class="value-container">0%</div>
+                        </div>
+                        <div class="gauge-labels">
+                            <span>Empty</span>
+                            <span>Full</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card details-card">
+                    <h2>System Info</h2>
+                    <div class="info-row">
+                        <span class="label"><i class="fa-solid fa-clock"></i> Last Updated:</span>
+                        <span id="last-updated" class="value">Waiting for data...</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label"><i class="fa-solid fa-microchip"></i> Device ID:</span>
+                        <span class="value">ESP32-TrashBot-01</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="label"><i class="fa-solid fa-database"></i> Cloud:</span>
+                        <span class="value">ThingSpeak</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bins Directory (Full Listing) -->
+            <div id="bins-directory-section" class="card directory-card">
+                <div class="directory-header">
+                    <h2><i class="fa-solid fa-list-ul"></i> Bins Status Directory</h2>
+                    <span class="directory-count"><span id="active-bins-count">0</span> Bins Online</span>
+                </div>
+                <div class="directory-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Bin ID</th>
+                                <th>Current Fill</th>
+                                <th>Predicted (5m)</th>
+                                <th>Status</th>
+                                <th>Nearest Neighbor</th>
+                                <th>Distance From You</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bins-directory-body">
+                            <!-- Rows injected by app.js -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- Community View -->
+        <section id="view-community" class="community-view hidden">
+            <!-- Token Tracker -->
+            <div class="token-tracker">
+                <div class="tracker-input-wrap">
+                    <i class="fa-solid fa-ticket"></i>
+                    <input type="text" id="tracker-input" placeholder="Enter your complaint token (e.g. CMP12345)">
+                    <button id="tracker-btn" onclick="trackComplaint()">Track</button>
+                </div>
+                <div id="tracker-result" class="tracker-result hidden"></div>
+            </div>
+
+            <div class="community-header">
+                <div>
+                    <h2><i class="fa-solid fa-users"></i> Community Reports</h2>
+                    <p class="community-sub">All issues reported by users for this bin</p>
+                </div>
+                <button class="refresh-btn" onclick="loadComplaints()">
+                    <i class="fa-solid fa-rotate-right"></i> Refresh
+                </button>
+            </div>
+            <div id="complaints-list" class="complaints-list">
+                <div class="complaints-empty">
+                    <i class="fa-solid fa-inbox"></i>
+                    <p>No complaints yet. Be the first to report!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="dashboard-footer">
+            <p>Data Source: ESP32 + Ultrasonic Sensor | Cloud: ThingSpeak</p>
+            <p class="copyright">&copy; 2026 IoT Smart Dumpster Project</p>
+            <a href="admin.html" class="admin-link"><i class="fa-solid fa-lock"></i> Admin</a>
+        </footer>
+    </div>
+
+    <!-- Complaint Modal -->
+    <div id="complaint-modal" class="modal-overlay hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-flag"></i> Report an Issue</h2>
+                <button id="modal-close" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+
+            <form id="complaint-form">
+                <div class="form-group">
+                    <label for="complaint-location">Location / Bin Area</label>
+                    <input type="text" id="complaint-location" placeholder="e.g. Block A, Near Gate 2" required>
+                </div>
+                <div class="form-group">
+                    <label for="complaint-message">Describe the Issue</label>
+                    <textarea id="complaint-message" rows="4" placeholder="e.g. Bin is overflowing, needs immediate attention..." required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="complaint-image">Image URL <span class="optional-tag">(optional)</span></label>
+                    <input type="url" id="complaint-image" placeholder="https://example.com/photo.jpg">
+                    <div id="image-preview-wrap" class="image-preview-wrap hidden">
+                        <img id="image-preview" src="" alt="Preview" class="image-preview">
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">
+                    <i class="fa-solid fa-paper-plane"></i> Submit Complaint
+                </button>
+            </form>
+
+            <!-- Success State -->
+            <div id="complaint-success" class="complaint-success hidden">
+                <i class="fa-solid fa-circle-check"></i>
+                <h3>Complaint Registered!</h3>
+                <p>Your token number:</p>
+                <span id="complaint-token" class="token-badge"></span>
+                <p class="success-note">Save this token to track your complaint status.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Logic -->
+    <script src="app.js"></script>
+</body>
+</html>

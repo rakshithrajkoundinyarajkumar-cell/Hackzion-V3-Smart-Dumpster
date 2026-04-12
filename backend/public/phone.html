@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>EcoTrack Field Device</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', -apple-system, sans-serif;
+            background: #0f1117;
+            color: #e4e6eb;
+            min-height: 100vh;
+            padding: 16px;
+            font-size: 16px;
+        }
+        .card {
+            background: #1a1d27;
+            border-radius: 14px;
+            padding: 18px;
+            margin-bottom: 14px;
+            border: 1px solid #2a2d3a;
+        }
+        h1 { font-size: 20px; margin-bottom: 2px; }
+        .subtitle { color: #888; font-size: 13px; margin-bottom: 4px; }
+        .card-title { font-size: 15px; font-weight: 700; margin-bottom: 10px; }
+        .card-label { color: #888; font-size: 13px; margin-bottom: 8px; }
+
+        /* Bin Selector */
+        select {
+            width: 100%;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            background: #252830;
+            color: #e4e6eb;
+            border: 1px solid #2a2d3a;
+            border-radius: 10px;
+            min-height: 52px;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        /* Fill Display */
+        .fill-display {
+            text-align: center;
+            font-size: 52px;
+            font-weight: 800;
+            margin: 14px 0;
+            transition: color 0.3s ease;
+        }
+
+        /* Range Slider */
+        input[type=range] {
+            width: 100%;
+            height: 40px;
+            -webkit-appearance: none;
+            background: transparent;
+            margin: 8px 0;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            height: 10px;
+            border-radius: 6px;
+            background: #2a2d3a;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            margin-top: -11px;
+            border: 3px solid #0f1117;
+        }
+        input[type=range]::-moz-range-track {
+            height: 10px;
+            border-radius: 6px;
+            background: #2a2d3a;
+        }
+        input[type=range]::-moz-range-thumb {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #3498db;
+            cursor: pointer;
+            border: 3px solid #0f1117;
+        }
+
+        /* Buttons */
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            font-size: 16px;
+            font-weight: 700;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            min-height: 52px;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-reset {
+            background: #2a2d3a;
+            color: #aaa;
+            margin-top: 10px;
+        }
+        .btn-reset:hover { background: #363a4a; color: #e4e6eb; }
+
+        /* GPS Card */
+        .gps-active { background: #0d2b1a; border-color: #2ecc71; }
+        .gps-denied { background: #2b0d0d; border-color: #e74c3c; }
+        .gps-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .gps-label { color: #888; }
+        .gps-value { font-weight: 600; font-family: 'Consolas', monospace; }
+
+        /* Sync Status */
+        .sync-ok { color: #2ecc71; font-size: 13px; margin-top: 10px; }
+        .sync-fail { color: #e74c3c; font-size: 13px; margin-top: 10px; }
+
+        /* Warning Card */
+        .warning-card {
+            background: #2d2200;
+            border-color: #f39c12;
+            font-size: 13px;
+            color: #f39c12;
+        }
+        .warning-card strong { display: block; margin-bottom: 4px; }
+        .warning-url { 
+            background: #1a1d27; 
+            padding: 6px 10px; 
+            border-radius: 6px; 
+            font-family: monospace; 
+            font-size: 12px;
+            margin-top: 6px;
+            word-break: break-all;
+            color: #e4e6eb;
+        }
+    </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="card" style="text-align:center;">
+    <h1>📍 EcoTrack Field Device</h1>
+    <div class="subtitle">Keep this page open during the demo</div>
+  </div>
+
+  <!-- Bin Selector -->
+  <div class="card">
+    <div class="card-label">This phone represents:</div>
+    <select id="bin-select">
+      <option value="BIN_01">BIN_01 — Gate Area</option>
+      <option value="BIN_02">BIN_02 — Parking Zone</option>
+      <option value="BIN_03">BIN_03 — Canteen Block</option>
+      <option value="BIN_04">BIN_04 — Main Entrance</option>
+    </select>
+  </div>
+
+  <!-- Demo Fill Override -->
+  <div class="card">
+    <div class="card-title">Route Optimizer Fill Override</div>
+    <div class="card-label" style="color:#666">Dashboard shows real ThingSpeak data. This only affects route priority scoring.</div>
+    <div class="fill-display" id="fill-display" style="color:#2ecc71">0%</div>
+    <input type="range" id="fill-slider" min="0" max="100" step="1" value="0">
+    <button class="btn btn-reset" id="reset-fill-btn">↺ Reset to Real Sensor</button>
+  </div>
+
+  <!-- GPS HTTP Warning -->
+  <div id="gps-warning" style="
+    display: none;
+    background: #2d2200;
+    color: #f39c12;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  "></div>
+
+  <!-- GPS Status -->
+  <div class="card" id="gps-card">
+    <div class="card-title">📡 GPS Tracking</div>
+    <div class="gps-row"><span class="gps-label">Lat:</span> <span class="gps-value" id="gps-lat">—</span></div>
+    <div class="gps-row"><span class="gps-label">Lon:</span> <span class="gps-value" id="gps-lon">—</span></div>
+    <div class="gps-row"><span class="gps-label">Accuracy:</span> <span class="gps-value" id="gps-acc">—</span></div>
+    <div id="sync-status"></div>
+    <button id="manual-location-btn" style="
+      margin-top: 12px;
+      width: 100%;
+      padding: 12px;
+      background: #2a2d3a;
+      color: #aaa;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      cursor: pointer;
+    ">
+      📍 Use Current Location (Manual Trigger)
+    </button>
+  </div>
+
+  <!-- Warning -->
+  <div class="card warning-card">
+    <strong>⚠️ BASE_URL is currently set to:</strong>
+    <div class="warning-url" id="base-url-display"></div>
+    <div style="margin-top:8px">If map dots aren't moving, update this in phone.html</div>
+  </div>
+
+  <!-- GPS Troubleshooting -->
+  <div style="
+    background: #1a1d27;
+    border: 1px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 14px;
+    font-size: 12px;
+    color: #666;
+    margin-top: 12px;
+  ">
+    <b style="color:#aaa">📌 GPS Troubleshooting</b><br><br>
+    If GPS is blocked, try one of these:<br><br>
+    1. <b style="color:#e4e6eb">ngrok:</b> Run
+       <code style="color:#3498db">ngrok http 3000</code>
+       on laptop → open the HTTPS URL on phone<br><br>
+    2. <b style="color:#e4e6eb">Chrome flag:</b> On phone open
+       <code style="color:#3498db">chrome://flags</code> → search
+       "insecure origins" → add your laptop IP → relaunch<br><br>
+    3. <b style="color:#e4e6eb">Manual button:</b>
+       Use the "Use Current Location" button above as fallback
+  </div>
+
+<script>
+// ⚠️ CHANGE THIS to your laptop's local WiFi IP before the demo
+// Run: ipconfig (Windows) | ifconfig (Mac/Linux)
+// Example: http://192.168.1.5:3000
+const BASE_URL = "http://10.131.133.67:3000";
+
+// ── DOM REFS ──────────────────────────────────────────
+const binSelect = document.getElementById("bin-select");
+const fillSlider = document.getElementById("fill-slider");
+const fillDisplay = document.getElementById("fill-display");
+const resetBtn = document.getElementById("reset-fill-btn");
+const gpsCard = document.getElementById("gps-card");
+const latDisplay = document.getElementById("gps-lat");
+const lonDisplay = document.getElementById("gps-lon");
+const accDisplay = document.getElementById("gps-acc");
+const syncStatus = document.getElementById("sync-status");
+const baseUrlDisplay = document.getElementById("base-url-display");
+
+// Show current BASE_URL in warning card
+if (baseUrlDisplay) baseUrlDisplay.textContent = BASE_URL;
+
+// ── FILL SLIDER ───────────────────────────────────────
+let fillDebounce = null;
+
+fillSlider.addEventListener("input", () => {
+  const val = parseInt(fillSlider.value);
+
+  // Update display immediately
+  fillDisplay.textContent = val + "%";
+  if (val >= 80) fillDisplay.style.color = "#e74c3c";
+  else if (val >= 40) fillDisplay.style.color = "#f39c12";
+  else fillDisplay.style.color = "#2ecc71";
+
+  // Debounce server call 300ms
+  clearTimeout(fillDebounce);
+  fillDebounce = setTimeout(() => sendFill(val), 300);
+});
+
+// ── RESET BUTTON ──────────────────────────────────────
+resetBtn.addEventListener("click", () => {
+  fillSlider.value = 0;
+  fillDisplay.textContent = "Using ThingSpeak";
+  fillDisplay.style.color = "#888";
+  sendFill(null);
+});
+
+// ── BIN SELECTOR ──────────────────────────────────────
+binSelect.addEventListener("change", () => {
+  // Reset fill display when switching bins
+  fillSlider.value = 0;
+  fillDisplay.textContent = "0%";
+  fillDisplay.style.color = "#2ecc71";
+});
+
+// ── SEND FILL TO BACKEND ──────────────────────────────
+async function sendFill(value) {
+  const binId = binSelect.value;
+  try {
+    const res = await fetch(`${BASE_URL}/bins/${binId}/fill`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fill: value })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    const data = await res.json();
+    console.log("[FILL SENT]", data);
+    showSyncOk();
+  } catch (e) {
+    console.error("[FILL ERROR]", e);
+    showSyncError();
+  }
+}
+
+// ── SEND LOCATION TO BACKEND ──────────────────────────
+async function sendLocation(lat, lon) {
+  const binId = binSelect.value;
+  try {
+    const res = await fetch(`${BASE_URL}/bins/${binId}/location`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lon })
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    console.log(`[LOCATION SENT] ${binId} → ${lat}, ${lon}`);
+    showSyncOk();
+  } catch (e) {
+    console.error("[LOCATION ERROR]", e);
+    showSyncError();
+  }
+}
+
+// ── GPS TRACKING ──────────────────────────────────────
+function startGPS() {
+  // Check if geolocation is available
+  if (!navigator.geolocation) {
+    showGPSError("Geolocation not supported by this browser");
+    return;
+  }
+
+  // Warn if not on HTTPS or localhost (GPS blocked on Android HTTP)
+  if (location.protocol !== "https:" && location.hostname !== "localhost") {
+    showGPSWarning(
+      "⚠️ GPS may be blocked — Chrome requires HTTPS for location on mobile. " +
+      "Try opening this page via ngrok or a local HTTPS tunnel."
+    );
+    // Still attempt — some browsers allow it on local network
+  }
+
+  navigator.geolocation.watchPosition(
+    (position) => {
+      const { latitude, longitude, accuracy } = position.coords;
+      if (latDisplay) latDisplay.textContent = latitude.toFixed(6);
+      if (lonDisplay) lonDisplay.textContent = longitude.toFixed(6);
+      if (accDisplay) accDisplay.textContent = `±${accuracy.toFixed(0)}m`;
+      if (gpsCard) {
+        gpsCard.classList.remove("gps-denied");
+        gpsCard.classList.add("gps-active");
+      }
+      sendLocation(latitude, longitude);
+    },
+    (err) => {
+      const messages = {
+        1: "Location permission denied — tap the lock icon in Chrome and allow location",
+        2: "Position unavailable — move to open area",
+        3: "GPS timeout — retrying..."
+      };
+      showGPSError(messages[err.code] || "Unknown GPS error");
+      // Retry after 5 seconds on timeout
+      if (err.code === 3) setTimeout(startGPS, 5000);
+    },
+    { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+  );
+}
+
+function showGPSError(msg) {
+  if (gpsCard) {
+    gpsCard.classList.remove("gps-active");
+    gpsCard.classList.add("gps-denied");
+  }
+  if (latDisplay) latDisplay.textContent = msg;
+  if (lonDisplay) lonDisplay.textContent = "";
+  if (accDisplay) accDisplay.textContent = "";
+  console.error("[GPS]", msg);
+}
+
+function showGPSWarning(msg) {
+  const warn = document.getElementById("gps-warning");
+  if (warn) {
+    warn.textContent = msg;
+    warn.style.display = "block";
+  }
+  console.warn("[GPS]", msg);
+}
+
+// ── MANUAL LOCATION BUTTON ───────────────────────────
+document.getElementById("manual-location-btn").addEventListener("click", () => {
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      sendLocation(pos.coords.latitude, pos.coords.longitude);
+      if (latDisplay) latDisplay.textContent = pos.coords.latitude.toFixed(6);
+      if (lonDisplay) lonDisplay.textContent = pos.coords.longitude.toFixed(6);
+      if (accDisplay) accDisplay.textContent = `±${pos.coords.accuracy.toFixed(0)}m`;
+      if (gpsCard) {
+        gpsCard.classList.remove("gps-denied");
+        gpsCard.classList.add("gps-active");
+      }
+      showSyncOk();
+    },
+    (err) => showGPSError("Failed: " + err.message)
+  );
+});
+
+// ── SYNC STATUS HELPERS ───────────────────────────────
+function showSyncOk() {
+  if (!syncStatus) return;
+  const time = new Date().toLocaleTimeString();
+  syncStatus.textContent = `✅ Last synced: ${time}`;
+  syncStatus.style.color = "#2ecc71";
+}
+
+function showSyncError() {
+  if (!syncStatus) return;
+  syncStatus.textContent = "❌ Sync failed — check WiFi and BASE_URL";
+  syncStatus.style.color = "#e74c3c";
+}
+
+// ── INIT ──────────────────────────────────────────────
+startGPS();
+</script>
+</body>
+</html>

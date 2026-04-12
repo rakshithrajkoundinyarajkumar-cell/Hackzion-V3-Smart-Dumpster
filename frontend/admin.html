@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoTrack Admin Panel</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Custom CSS (Dark Theme) -->
+    <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+    
+    <!-- LOGIN SCREEN -->
+    <div id="login-view" class="login-screen">
+        <div class="login-card">
+            <a href="index.html" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to Public Page</a>
+            <div class="login-brand">
+                <i class="fa-solid fa-shield-halved"></i>
+                <h1>EcoTrack Admin</h1>
+                <p>Authorized personnel only</p>
+            </div>
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="admin-username">Username</label>
+                    <input type="text" id="admin-username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="admin-password">Password</label>
+                    <input type="password" id="admin-password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn">
+                    <i class="fa-solid fa-right-to-bracket"></i> Login
+                </button>
+                <div id="login-error" class="login-error hidden">Invalid credentials</div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="dashboard-view" class="admin-dashboard hidden">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="admin-header-left">
+                <i class="fa-solid fa-shield-halved"></i>
+                <div>
+                    <h1>EcoTrack Admin Console</h1>
+                    <p>System management and complaint resolution</p>
+                </div>
+            </div>
+            <div class="admin-header-right">
+                <span class="admin-user-tag"><i class="fa-solid fa-user-tie"></i> <span id="current-admin-name">Admin</span></span>
+                <button id="logout-btn" class="logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Admin Navigation -->
+        <div class="admin-nav">
+            <button class="admin-tab-btn active" data-tab="dashboard-content"><i class="fa-solid fa-chart-pie"></i> Dashboard</button>
+            <button class="admin-tab-btn" data-tab="route-content"><i class="fa-solid fa-map-location-dot"></i> Route Optimizer</button>
+            <button class="admin-tab-btn" data-tab="map-content"><i class="fa-solid fa-map-location-dot"></i> Live Map</button>
+        </div>
+
+        <div id="dashboard-content" class="admin-tab-section active">
+            <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <i class="fa-solid fa-trash-can stat-icon blue"></i>
+                <span id="stat-bins" class="stat-value">-</span>
+                <span class="stat-label">Total Bins</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-inbox stat-icon yellow"></i>
+                <span id="stat-pending" class="stat-value">-</span>
+                <span class="stat-label">Pending Issues</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-gears stat-icon blue"></i>
+                <span id="stat-progress" class="stat-value">-</span>
+                <span class="stat-label">In Progress</span>
+            </div>
+            <div class="stat-card">
+                <i class="fa-solid fa-circle-check stat-icon green"></i>
+                <span id="stat-resolved" class="stat-value">-</span>
+                <span class="stat-label">Resolved</span>
+            </div>
+        </div>
+
+        <!-- Bins Manager -->
+        <div class="bins-section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-layer-group"></i> Monitored Bins</h2>
+            </div>
+            <div id="admin-bins-list" class="bins-list">
+                <!-- Bins will be injected here -->
+            </div>
+            
+            <form id="add-bin-form" class="add-bin-form">
+                <h3><i class="fa-solid fa-plus"></i> Register New Bin</h3>
+                <div class="add-bin-fields">
+                    <input type="text" id="new-bin-id" placeholder="Bin ID (e.g. BIN_02)" required>
+                    <input type="number" step="any" id="new-bin-lat" placeholder="Latitude" required>
+                    <input type="number" step="any" id="new-bin-lon" placeholder="Longitude" required>
+                    <input type="text" id="new-bin-channel" placeholder="ThingSpeak Channel ID" required>
+                    <button type="submit" class="add-bin-btn">Add Bin</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Complaints Manager -->
+        <div class="complaints-section">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-clipboard-list"></i> Complaints Manager</h2>
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="ALL">All</button>
+                    <button class="filter-btn" data-filter="PENDING">Pending</button>
+                    <button class="filter-btn" data-filter="IN PROGRESS">In Progress</button>
+                    <button class="filter-btn" data-filter="RESOLVED">Resolved</button>
+                </div>
+            </div>
+            
+            <div id="admin-complaints-list" class="admin-complaints-list">
+                <!-- Complaints will be injected here -->
+            </div>
+        </div>
+        </div> <!-- End Dashboard Content -->
+
+        <div id="route-content" class="admin-tab-section hidden">
+            <div class="section-header">
+                <h2><i class="fa-solid fa-map-location-dot"></i> Route Optimizer</h2>
+                <button id="generate-route-btn" class="generate-route-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate Optimal Route</button>
+            </div>
+            
+            <div class="route-summary" id="route-summary">
+                Click "Generate Optimal Route" to calculate prioritization based on fill levels.
+            </div>
+
+            <div id="route-stops-list" class="route-stops-list">
+                <!-- Stops injected here -->
+            </div>
+
+        </div>
+
+        <!-- Live Map Tab -->
+        <div id="map-content" class="admin-tab-section hidden">
+            <div class="map-toolbar">
+                <button id="map-generate-route-btn" class="generate-route-btn" onclick="generateRoute()">
+                    <i class="fa-solid fa-route"></i> Generate Optimal Route
+                </button>
+                <div class="map-live-indicator">
+                    <span class="pulse-dot"></span> Live — updates every 5s
+                </div>
+            </div>
+            <div id="live-map" style="
+              height: 450px;
+              width: 100%;
+              border-radius: 12px;
+              border: 1px solid #2a2d3a;
+              background: #1a1d27;
+            "></div>
+            <div id="route-output" class="hidden">
+                <div id="map-route-summary"></div>
+                <div id="route-cards"></div>
+            </div>
+            <details id="demo-controls">
+                <summary>🎛️ Demo Fill Controls — click to expand</summary>
+                <p class="demo-subtitle">
+                    Controls fill % used by route optimizer per bin.
+                    Dashboard always shows real ThingSpeak data.
+                </p>
+                <div id="demo-sliders"></div>
+            </details>
+        </div>
+    </div>
+
+    <!-- Main Logic -->
+    <script src="admin.js"></script>
+</body>
+</html>
